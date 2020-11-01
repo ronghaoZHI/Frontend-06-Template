@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>wuziqi</title>
+    <style>
+      .cell {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        line-height: 50px;
+        vertical-align: middle;
+        text-align: center;
+        border: 1px solid #fff;
+        background: green;
+        font-size:  12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="board"></div>
+    <script>
+
+      let color = 1;
+      let pattern = [];
+      createPattern();
+
+      function createPattern(){
+        for(let i = 0; i< 15 * 15; i++) {
+          pattern[i] = 0
+        }
+      } 
+      
+      function move(i,j) {
+        
+        let current = pattern[i * 15 + j];
+
+        if (current) { return }
+
+        pattern[i * 15 + j] = color;
+
+        if (check(pattern, color)) {
+          alert(`${color === 2 ? '⭕️': '❌'} is winner`)
+        }
+
+        color = 3 - color;
+
+
+        if(willWin(pattern, color)) {
+          alert(`${color === 2 ? '⭕️': '❌'} is winner`)
+        }
+        show();
+      }
+
+      function clone(pattern) {
+        return Object.create(pattern);
+      } 
+
+      function willWin(pattern, color) {
+        for(let i = 0; i < 15; i++) {
+          for(let j = 0; j < 15; j++) {
+
+            // 如果当前位置有棋子 掠过
+            if (pattern[i * 15 + j]) {
+              continue;
+            }
+
+            let tmp = clone(pattern);
+            tmp[i * 15 + j] = color;
+
+            if (check(tmp, color, 4)) {
+              return [i, j]  
+            }
+          }
+        }
+        return null
+      }
+      // 最优策略
+      let limit = 0;
+      function bestChoice(pattern, color) {
+        let p ;
+        limit++;
+
+        if (p = willWin(pattern, color)) {
+          return {
+            point: p,
+            result: 1,
+            color
+          }
+        }
+
+        let result = -2;
+        let point = null;
+
+        outer: for(let i = 0; i < 15; i++) {
+          for(let j = 0; j < 15; j++) {
+
+            if(pattern[i * 15 + j]) {
+              continue;
+            }
+
+            let tmp = clone(pattern);
+            tmp[i * 15 + j] = color;
+
+            let res;
+            if (limit < 1000 ){
+                res = bestChoice(tmp, 3 - color);
+            } else {
+              res = {
+                point: null,
+                result: -3,
+                color,
+                msg: 'x'
+              }
+            }
+
+            if (-res.result > result && !res.msg) {
+              result = -res.result;
+              point = [i, j];
+            }
+
+            // * 胜负剪枝
+            if (result === 1) {
+              break outer;
+            }
+          }
+        }
+       
+        return {
+          point,
+          result: result === -3 ? -3 : (point ? result : 0) ,
+          color
+        }
+      }
+
+      function check(pattern, color, repeatNum = 5) {
+
+          // 横
+          for(let i = 0; i < 15; i++) {
+            let win = false;
+            let rowColor = [];
+            for (let j = 0; j < 15; j++ ) {
+              rowColor.push(pattern[i * 15 +j]);
+            }
+
+            if (includesRepeat(rowColor,color,repeatNum)) {
+              return true
+            }
+          }
+
+          // 竖
+          for(let i = 0; i < 15; i++) {
+            let win = false;
+            let rowColor = [];
+            for (let j = 0; j < 15; j++ ) {
+              rowColor.push(pattern[j * 15 + i]);
+            }
+
+            if (includesRepeat(rowColor,color,repeatNum)) {
+              return true
+            }
+          }
+
+          // 左下斜
+          {
+            let win = false;
+            outer: for (let i = -7; i< 7; i++) {
+              let r = LeftSlash(i,repeatNum);
+              if (r) {
+                win = true;
+                break outer
+              }
+            } 
+            if (win) {
+              return win;
+            }
+          }
+
+          // 右下斜
+          {
+            let win = false;
+            outer: for (let i = -7; i< 7; i++) {
+              let r = RightSlash(i,repeatNum);
+              if (r) {
+                win = true;
+                break outer
+              }
+            } 
+            if (win) {
+              return win;
+            }
+          }
+
+          return false
+      }
+      // 左下斜
+      function LeftSlash(startDot, repeatNum){
+        let rowColor = [];
+        for (let i = 0; i< 15; i++) {
+            rowColor.push(pattern[i * 15 + i + startDot]);
+        } 
+
+        if (includesRepeat(rowColor,color,repeatNum)) {
+          return true
+        }
+        return false
+      }
+      // 右下斜
+      function  RightSlash(startDot, repeatNum){
+        let rowColor = [];
+        for (let i = 0; i< 15; i++) {
+            rowColor.push(pattern[i * 15 + 14 - i + startDot]);
+        } 
+
+        if (includesRepeat(rowColor,color,repeatNum)) {
+          return true
+        }
+        return false
+      }
+
+      function includesRepeat(rowColor,color,repeatNum) {
+        return rowColor.join('').includes(`${color}`.repeat(repeatNum));
+      }
+
+      function show() {
+        let board = document.getElementById('board');
+        board.innerHTML = null;
+        for(let i = 0; i < 15; i++) {
+          for (let j = 0; j < 15; j++ ) {
+            let cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.innerText = 
+               pattern[i * 15 + j] === 2 ? "⭕️" :
+               pattern[i * 15 + j] === 1 ? "❌" :
+               '' ;
+            
+            cell.addEventListener('click',() => move( i, j))
+            board.appendChild(cell)
+          }
+          board.appendChild(document.createElement('br'));
+        }
+      }
+      show();
+
+    </script>
+
+
+  </body>
+</html>
