@@ -1,248 +1,314 @@
-<!DOCTYPE html>
 <html>
-  <head>
-    <title>wuziqi</title>
-    <style>
-      .cell {
-        display: inline-block;
-        width: 50px;
-        height: 50px;
-        line-height: 50px;
-        vertical-align: middle;
-        text-align: center;
-        border: 1px solid #fff;
-        background: green;
-        font-size:  12px;
+<head>
+  <style>
+    #app{
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap:wrap;
+      border: 1px solid #fff;
+      background: #9FBBFF;
+    }
+    .cell{
+      width: 50px;
+      height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      border: 1px solid #fff;
+    }
+    .black{
+      width: 25px;
+      height: 25px;
+      background: #000;
+      border-radius: 50%;
+    }
+    .white{
+      width: 25px;
+      height: 25px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: .1rem .1rem .05rem rgba(0,0,0,.5)
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const pattern = Array(15 * 15).fill(0);
+    const size = 15;
+    const length = 5;
+    let flag = 1;
+
+    draw()
+
+    function userMove(x,y) {
+      activeCell(x, y, flag)
+
+      if(check(pattern)) {
+        alert(flag===2 ? "黑子获胜！" : "白子获胜！");
       }
-    </style>
-  </head>
-  <body>
-    <div id="board"></div>
-    <script>
+      flag = 3 - flag;
 
-      let color = 1;
-      let pattern = [];
-      createPattern();
-
-      function createPattern(){
-        for(let i = 0; i< 15 * 15; i++) {
-          pattern[i] = 0
-        }
-      } 
-      
-      function move(i,j) {
-        
-        let current = pattern[i * 15 + j];
-
-        if (current) { return }
-
-        pattern[i * 15 + j] = color;
-
-        if (check(pattern, color)) {
-          alert(`${color === 2 ? '⭕️': '❌'} is winner`)
-        }
-
-        color = 3 - color;
-
-
-        if(willWin(pattern, color)) {
-          alert(`${color === 2 ? '⭕️': '❌'} is winner`)
-        }
-        show();
+      if(flag === 2) {
+        setTimeout(() => {
+           let { point } = bestChoice(pattern, flag)
+          if(point) { 
+            activeCell(point[0], point[1], flag)
+          }
+          if(check(pattern, flag)) {
+            alert(flag===2 ? "黑子获胜！" : "白子获胜！");
+          }
+          flag = 3 - flag;
+        })
       }
+    }
 
-      function clone(pattern) {
-        return Object.create(pattern);
-      } 
+    function draw() {
+      let l = size;
+      let board = document.getElementById("app");
+      board.innerHTML = "";
+      board.style.width = l*50+"px";
 
-      function willWin(pattern, color) {
-        for(let i = 0; i < 15; i++) {
-          for(let j = 0; j < 15; j++) {
+      const setPiece = (_class)=>{
+        let p = document.createElement("span");
+        p.classList.add(_class);
+        return p;
+      };
+      for(let i=0;i<l;i++){
+        for(let j=0;j<l;j++){
+          let cell = document.createElement("div");
+          cell.classList.add("cell");
+          pattern[i*l+j]===2?cell.appendChild(setPiece("black")):
+            pattern[i*l+j]===1?cell.appendChild(setPiece("white")):
+              cell.addEventListener("click",()=>this.userMove(j,i));
+          // cell.innerText=i*l+j
+          board.appendChild(cell);
+        }
+      }
+    }
 
-            // 如果当前位置有棋子 掠过
-            if (pattern[i * 15 + j]) {
-              continue;
-            }
+    function clone(pattern) { 
+      return JSON.parse(JSON.stringify(pattern));
+    }
 
-            let tmp = clone(pattern);
-            tmp[i * 15 + j] = color;
+    function check(pattern, flag, target){
+      let l = size;
+      target = target || 5;
 
-            if (check(tmp, color, 4)) {
-              return [i, j]  
+      //行
+      for(let i=0;i<l;i++){
+          let data = [];
+        for(let j=0;j<l;j++){
+          if(pattern[i*l+j]===flag){
+              data.push(i*l+j);
+          }else{
+              data = [];
+          }
+          if(data.length>= target){
+            //小于5连时有一边被拦截，不算最优
+            if( target!==this._length
+              && ((
+                data[0]===i*l
+                  || pattern[data[0]-1]
+                )||(
+                  data[data.length-1]===i*l+l-1
+                  || pattern[data[data.length-1]+1]
+                ))
+            ){
+              data = [];
+            }else{
+              return data;
             }
           }
         }
-        return null
       }
-      // 最优策略
-      let limit = 0;
-      function bestChoice(pattern, color) {
-        let p ;
-        limit++;
-
-        if (p = willWin(pattern, color)) {
-          return {
-            point: p,
-            result: 1,
-            color
+      //列
+      for(let i=0;i<l;i++){
+          let data = [];
+        for(let j=0;j<l;j++){
+          if(pattern[j*l+i]===flag){
+              data.push(j*l+i);
+          }else{
+              data = [];
           }
-        }
-
-        let result = -2;
-        let point = null;
-
-        outer: for(let i = 0; i < 15; i++) {
-          for(let j = 0; j < 15; j++) {
-
-            if(pattern[i * 15 + j]) {
-              continue;
-            }
-
-            let tmp = clone(pattern);
-            tmp[i * 15 + j] = color;
-
-            let res;
-            if (limit < 1000 ){
-                res = bestChoice(tmp, 3 - color);
-            } else {
-              res = {
-                point: null,
-                result: -3,
-                color,
-                msg: 'x'
+            if(data.length>= target){
+              //小于5连时有一边被拦截，不算最优
+              if( target!==this._length
+                && ((
+                    data[0]===i
+                    || pattern[data[0]-l]
+                  )||(
+                    data[data.length-1]===(l-1)*l+i
+                    || pattern[data[data.length-1]+l]
+                ))
+              ){
+                data = [];
+              }else{
+                return data;
               }
             }
-
-            if (-res.result > result && !res.msg) {
-              result = -res.result;
-              point = [i, j];
+        }
+      }
+      //左上 至 右下  偏上
+      for(let i=0;i<=l-length;i++){
+        {
+            let data = [];
+          if(l-i<target) continue;
+          for(let j=0;j<l-i;j++){
+            if(pattern[j*l+j+i]===flag){
+                data.push(j*l+j+i);
+            }else{
+                data = [];
             }
-
-            // * 胜负剪枝
-            if (result === 1) {
-              break outer;
+            if(data.length>= target){
+              //小于5连时有一边被拦截，不算最优
+              if( target!==this._length
+                && ((
+                  data[0]===i
+                    || pattern[data[0]-(l+1)]
+                  )||(
+                    data[data.length-1]===(l-i-1)*l+(l-i-1)+i
+                    || pattern[data[data.length-1]+(l+1)]
+                  ))
+              ){
+                data = [];
+              }else{
+                return data;
+              }
             }
           }
         }
-       
+      }
+
+      //左上 至 右下  偏下
+      for(let i=1;i<=l-length;i++){
+          let data = [];
+        if(l-i<target) continue;
+        for(let j=i;j<l;j++){
+          if(pattern[j*l+j-i]===flag){
+              data.push(j*l+j-i);
+          }else{
+              data=[];
+          }
+          if(data.length>= target){
+            //小于5连时有一边被拦截，不算最优
+            if( target!==this._length
+              && ((
+                  data[0]===i*l
+                  || pattern[data[0]-(l+1)]
+                )||(
+                  data[data.length-1]===(l-1)*l+(l-1)-i
+                  || pattern[data[data.length-1]+(l+1)]
+              ))
+            ){
+              data = [];
+            }else{
+              return data;
+            }
+          }
+        }
+      }
+
+      //右上 至 左下  偏下
+      for(let i=1;i<=l-length;i++){
+          let data = [];
+        if(l-i<target) continue;
+        for(let j=i;j<l;j++){
+
+          if(pattern[j*l+(l-1-j)+i]===flag){
+              data.push(j*l+(l-1-j)+i);
+          }else{
+              data=[];
+          }
+          if(data.length>= target){
+            //小于5连时有一边被拦截，不算最优
+            if( target!==this._length
+              && ((
+                  data[0]===i*l+(l-1-i)+i
+                  || pattern[data[0]-(l-1)]
+                )||(
+                  data[data.length-1]===(l-1)*l+i
+                  || pattern[data[data.length-1]+(l-1)]
+              ))
+            ){
+              data = [];
+            }else{
+              return data;
+            }
+
+          }
+        }
+      }
+      //右上 至 左下  偏上
+      for(let i=0;i<=l-length;i++){
+        let data = [];
+        if(l-i<target) continue;
+        for(let j=0;j<l-i;j++){
+          if(pattern[j*l+(l-1-j)-i]===flag){
+              data.push(j*l+(l-1-j)-i);
+          }else{
+              data=[];
+          }
+          if(data.length>= target){
+            //小于5连时有一边被拦截，不算最优
+            if( target!==this._length
+              && ((
+                data[0]===(l-1)-i
+                || pattern[data[0]-(l-1)]
+              )||(
+                data[data.length-1]===(l-i-1)*l+(l-1-(l-i-1))-i
+                || pattern[data[data.length-1]+(l-1)]
+              ))
+            ){
+              data = [];
+            }else{
+              return data;
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    function willWin(pattern, flag, target) {
+      let l = size;
+      for(let i=0;i<l;i++){
+        for(let j=0;j<l;j++){
+          if(pattern[i*l+j]) continue;
+          let tmp = clone(pattern);
+          tmp[i*l+j] = flag;
+          if(check(tmp, flag, target)){
+            return [j,i]
+          }
+        }
+      }
+      return null;
+    }
+
+    function bestChoice(pattern, flag, target){
+      target = target|| length;
+  
+      let point = willWin(pattern, flag, target);
+      if(!point) {
+        point = willWin(pattern, 3-flag, target);
+      }
+
+      if(point) {
         return {
           point,
-          result: result === -3 ? -3 : (point ? result : 0) ,
-          color
+          result: 1
         }
       }
+      return bestChoice(pattern, flag, target-1);
+    }
 
-      function check(pattern, color, repeatNum = 5) {
+    function activeCell(x, y, flag) {
+      pattern[y*size+x] = flag;
+      draw();
+    }
+  </script>
 
-          // 横
-          for(let i = 0; i < 15; i++) {
-            let win = false;
-            let rowColor = [];
-            for (let j = 0; j < 15; j++ ) {
-              rowColor.push(pattern[i * 15 +j]);
-            }
-
-            if (includesRepeat(rowColor,color,repeatNum)) {
-              return true
-            }
-          }
-
-          // 竖
-          for(let i = 0; i < 15; i++) {
-            let win = false;
-            let rowColor = [];
-            for (let j = 0; j < 15; j++ ) {
-              rowColor.push(pattern[j * 15 + i]);
-            }
-
-            if (includesRepeat(rowColor,color,repeatNum)) {
-              return true
-            }
-          }
-
-          // 左下斜
-          {
-            let win = false;
-            outer: for (let i = -7; i< 7; i++) {
-              let r = LeftSlash(i,repeatNum);
-              if (r) {
-                win = true;
-                break outer
-              }
-            } 
-            if (win) {
-              return win;
-            }
-          }
-
-          // 右下斜
-          {
-            let win = false;
-            outer: for (let i = -7; i< 7; i++) {
-              let r = RightSlash(i,repeatNum);
-              if (r) {
-                win = true;
-                break outer
-              }
-            } 
-            if (win) {
-              return win;
-            }
-          }
-
-          return false
-      }
-      // 左下斜
-      function LeftSlash(startDot, repeatNum){
-        let rowColor = [];
-        for (let i = 0; i< 15; i++) {
-            rowColor.push(pattern[i * 15 + i + startDot]);
-        } 
-
-        if (includesRepeat(rowColor,color,repeatNum)) {
-          return true
-        }
-        return false
-      }
-      // 右下斜
-      function  RightSlash(startDot, repeatNum){
-        let rowColor = [];
-        for (let i = 0; i< 15; i++) {
-            rowColor.push(pattern[i * 15 + 14 - i + startDot]);
-        } 
-
-        if (includesRepeat(rowColor,color,repeatNum)) {
-          return true
-        }
-        return false
-      }
-
-      function includesRepeat(rowColor,color,repeatNum) {
-        return rowColor.join('').includes(`${color}`.repeat(repeatNum));
-      }
-
-      function show() {
-        let board = document.getElementById('board');
-        board.innerHTML = null;
-        for(let i = 0; i < 15; i++) {
-          for (let j = 0; j < 15; j++ ) {
-            let cell = document.createElement('div');
-            cell.classList.add('cell');
-            cell.innerText = 
-               pattern[i * 15 + j] === 2 ? "⭕️" :
-               pattern[i * 15 + j] === 1 ? "❌" :
-               '' ;
-            
-            cell.addEventListener('click',() => move( i, j))
-            board.appendChild(cell)
-          }
-          board.appendChild(document.createElement('br'));
-        }
-      }
-      show();
-
-    </script>
-
-
-  </body>
+</body>
 </html>
