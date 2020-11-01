@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TicTacToe - 人机对战</title>
+  <style>
+    .table {
+      display: inline-block;
+      border: 1px solid #ccc;
+    }
+    .row {
+      display: flex;
+      flex-direction: row;
+    }
+    .cell {
+      border: 1px solid #ccc;
+      text-align: center;
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      line-height: 50px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const grid = [[0,0,0],[0,2,0],[0,0,0]];
+    let flag = 1;
+
+    const row = grid.length;
+    const col = grid[0].length;
+    
+    const root = document.querySelector('#root')
+    const table = initTable(grid, root)
+    
+    table.addEventListener('click', function(e) {
+      console.log(e.target.id)
+      let arr = e.target.id && e.target.id.split('-')
+      if(arr && arr.length < 3) return
+      move(+arr[1],+arr[2],e.target)
+    })
+
+    function move(row,col,dom) {
+      if(grid[row][col] > 0) return null
+
+      activeCell(row, col,dom);
+
+      if(checkResult(clone(grid), flag)) {
+        alert(`${ flag === 1 ? '❌' : '🐱'} is win`)
+      }
+
+      flag = 3 - flag;
+
+      //  电脑下
+      if(flag === 2) {
+        setTimeout(() => {
+          const { point, result } = bestChoice(grid, flag)
+          // console.log(point, result)
+
+          if(point) {
+            dom = getCell(+point[0], +point[1])
+            activeCell(+point[0], +point[1],dom); 
+          }
+          if(checkResult(clone(grid), flag)) {
+            alert(`${ flag === 1 ? '❌' : '🐱'} is win`)
+          }
+          flag = 3 - flag
+
+          console.log('请下棋', flag)
+        }, 0)
+      }
+    }
+
+    function activeCell(row, col, dom) {
+      flag === 1
+        ? (
+            grid[row][col] = 1,
+            dom.innerText = `❌`
+          )
+        : (
+            grid[row][col] = 2,
+            dom.innerText = `🐱`
+          );
+    }
+
+    // function _bestChoice(grid,flag, target) {
+    //   let target = target || 3
+    //   let pos = willWin(grid,flag,target)
+    //   // 对方最优解
+    //   pos = pos ? pos : willWin(grid,3-flag,target) 
+    //   if(pos) {
+    //     return {
+    //       point: pos
+    //     }
+    //   }
+    //   return _bestChoice(grid,flag,target-1)
+    // }
+
+    function bestChoice(grid,flag) {
+      // 计算最佳位置
+      let pos;
+      if(pos = willWin(grid,flag)) {
+        return {
+          point: pos,
+          result: 1
+        }
+      }
+      let result = -2;
+      let point = null;
+
+      for(let i =0;i<row; i++) {
+        for(let j=0; j<col; j++) {
+          if(grid[i][j]) continue;
+          let table = clone(grid)
+          table[i][j] = flag
+          let res = bestChoice(table, 3-flag).result;
+
+          if(-res > result) {
+            result = -res
+            point = [i, j]
+          }
+          // console.log('result', result)
+        }
+      }
+
+      return {
+        point,
+        result: point ? result : 0
+      }
+    }
+
+    function willWin(grid, flag) {
+      let pos = null
+      for(let i=0; i<row; i++) {
+        for(let j=0; j<col; j++) {
+          if(grid[i][j]) continue;
+          let table = clone(grid)
+          table[i][j] = flag;
+          if(checkResult(table, flag)) {
+            pos = [i,j];
+            // console.log(pos, i, j)
+          }
+        }
+      }
+      
+      return pos;
+    }
+
+    function checkResult(grid, flag) {
+      const _row = grid.length;
+      const _col = grid[0].length;
+      // 三横 三竖 两对角
+      let win = true
+      // 横
+      for(let i=0; i<_row; i++) {
+        win = true
+        data = []
+        for(let j=0; j<_col; j++) {
+          if(grid[i][j] !== flag) {
+            win = false
+          }
+        }
+        if(win) return win
+      }
+      // 纵
+      for(let i=0; i<_row; i++) {
+        win = true
+        for(let j=0; j<_col; j++) {
+          if(grid[j][i] !== flag) {
+            win = false
+          }
+        }
+        if(win) return win
+      }
+      // 对角
+      if(row === col || row === 3-1-col) {
+        win = true
+        for(let i=0; i<_row; i++) {
+          for(let j=0; j<_col; j++) {
+            if(i === j && grid[i][j] !== flag) {
+              win = false
+            }
+          }
+        }
+
+        for(let i=0; i<_row; i++) {
+          for(let j=0; j<_col; j++) {
+            if(j === 2-i && grid[i][j] !== flag) {
+              win = false
+            }
+          }
+          if(win) return win
+        }
+      }
+
+      return false
+    }
+
+    function clone(table) {
+      return JSON.parse(JSON.stringify(table))
+    }
+
+    function getCell(row, col) {
+      return document.querySelector(`#cell-${row}-${col}`)
+    }
+    function initTable(grid, root) {
+      // const frag = document.createDocumentFragment()
+      const table = document.createElement('div')
+      table.setAttribute('class', 'table')
+
+      for(let i = 0; i<row; i++) {
+        const rowDom = document.createElement('div')
+        rowDom.setAttribute('class', `row`)
+        for(let j=0; j<col; j++) {
+          const cellDom = document.createElement('div')
+          cellDom.setAttribute('class', `cell`)
+          cellDom.setAttribute('id', `cell-${i}-${j}`)
+          if(grid[i][j]) {
+            cellDom.innerText = grid[i][j] === 1 ? '❌' : '🐱'
+          }
+          
+          // cellDom.innerText= `${i}${j}`
+          rowDom.appendChild(cellDom)
+        }
+        table.appendChild(rowDom)
+      }
+      // frag.appendChild(table)
+      
+      root ? root.appendChild(table) : document.body.appendChild(table) 
+      return table;
+    }
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TicTacToe - 人人对战</title>
+  <style>
+    .table {
+      display: inline-block;
+      border: 1px solid #ccc;
+    }
+    .row {
+      display: flex;
+      flex-direction: row;
+    }
+    .cell {
+      border: 1px solid #ccc;
+      text-align: center;
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      line-height: 50px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const grid = Array(3).fill(0).map(_ => Array(3).fill(0));
+    let flag = 1;
+
+    const row = grid.length;
+    const col = grid[0].length;
+    
+    const root = document.querySelector('#root')
+    const table = initTable(row, col, root)
+    
+    table.addEventListener('click', function(e) {
+      console.log(e.target.id)
+      let arr = e.target.id && e.target.id.split('-')
+      if(arr && arr.length < 3) return
+      activeCell(+arr[1], +arr[2], e.target)
+
+    })
+
+    function activeCell(row, col, dom) {
+      !dom && (dom = getCell(row, col))
+      if(grid[row][col] > 0) return null
+
+      flag === 1
+        ? (
+            grid[row][col] = 1,
+            dom.innerText = `❌`
+          )
+        : (
+            grid[row][col] = 2,
+            dom.innerText = `🐱`
+          );
+
+      checkResult(clone(grid), flag, row, col) &&
+        alert(`${dom.innerText} is win`);
+      flag = 3 - flag
+    }
+
+    function checkResult(table, flag, row, col) {
+      const _row = table.length;
+      const _col = table[0].length;
+      // 三横 三竖 两对角
+      let win;
+      // 横
+      for(let i=0; i<_row; i++) {
+        win = true
+        for(let j=0; j<_col; j++) {
+          if(table[i][j] !== flag) {
+            win = false
+          }
+        }
+        if(win) return win
+      }
+      // 纵
+      for(let i=0; i<_row; i++) {
+        win = true
+        for(let j=0; j<_col; j++) {
+          if(table[j][i] !== flag) {
+            win = false
+          }
+        }
+        if(win) return win
+      }
+      // 对角
+      if(row === col || row === 3-1-col) {
+        win = true
+        for(let i=0; i<_row; i++) {
+          for(let j=0; j<_col; j++) {
+            if( i === j && table[i][j] !== flag) {
+              win = flag
+            }
+          }
+        }
+
+        for(let i=0; i<_row; i++) {
+          for(let j=0; j<_col; j++) {
+            if(j === 2-i && table[i][j] !== flag) {
+              win = false
+            }
+          }
+        }
+
+        if(win) return win
+      }
+
+      return false
+    }
+
+    function clone(table) {
+      return JSON.parse(JSON.stringify(table))
+    }
+
+    function getCell(row, col) {
+      return document.querySelector(`#cell-${row}-${col}`)
+    }
+    function initTable(row, col, root) {
+      // const frag = document.createDocumentFragment()
+      const table = document.createElement('div')
+      table.setAttribute('class', 'table')
+
+      for(let i = 0; i<row; i++) {
+        const rowDom = document.createElement('div')
+        rowDom.setAttribute('class', `row`)
+        for(let j=0; j<col; j++) {
+          const cellDom = document.createElement('div')
+          cellDom.setAttribute('class', `cell`)
+          cellDom.setAttribute('id', `cell-${i}-${j}`)
+          // cellDom.innerText= `${i}${j}`
+          rowDom.appendChild(cellDom)
+        }
+        table.appendChild(rowDom)
+      }
+      // frag.appendChild(table)
+      
+      root ? root.appendChild(table) : document.body.appendChild(table) 
+      return table;
+    }
+
+  </script>
+</body>
+</html>
