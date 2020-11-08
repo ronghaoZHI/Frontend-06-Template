@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>最短搜索路径</title>
+  <style>
+    .cell {
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      width: 6px;
+      height: 6px;
+      display: inline-block;
+      font-size: 0;
+    }
+
+    .container {
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      display: flex;
+      width: 602px;
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script>
+    // 二叉堆
+    class BinaryHeap {
+      constructor(data, compare) {
+        this.heap = data;
+        this.compare = compare || ((a, b) => a - b)
+      }
+
+      take() {
+        if (!this.heap.length) return;
+        let min = this.heap[0];
+        let i = 0;
+
+        while (i < this.heap.length) {
+          if (i * 2 + 1 >= this.heap.length) break;
+          if (i * 2 + 2 >= this.heap.length) {
+            this.heap[i] = this.heap[i * 2 + 1];
+            i = i * 2 + 1;
+            break;
+          }
+          if (this.compare(this.heap[i * 2 + 1], this.heap[i * 2 + 2]) < 0) {
+            this.heap[i] = this.heap[i * 2 + 1]
+            i = i * 2 + 1;
+          } else {
+            this.heap[i] = this.heap[i * 2 + 2];
+            i = i * 2 + 2;
+          }
+        }
+
+        if (i < this.heap.length - 1) {
+          this.insertAt(i, this.heap.pop())
+        } else {
+          this.heap.pop()
+        }
+
+        return min;
+
+      }
+      save(item) {
+        this.insertAt(this.heap.length, item);
+      }
+      insertAt(i, item) {
+        this.heap[i] = item;
+        let t = 0;
+        while (i > 0 && this.compare(item, this.heap[t = Math.floor((i-1) / 2)]) < 0) {
+          [this.heap[i], this.heap[t]] = [this.heap[t], item];
+          i = Math.floor((i-1) / 2);
+        }
+      }
+      get length() {
+        return this.heap.length;
+      }
+    }
+
+    // 利用 Sorted 数据结构优化 路径的取值
+
+    class Sorted {
+      constructor(data, receiver) {
+        this.data = [...data];
+        this.compare = receiver || ((a, b) => a - b);
+      }
+      take() {
+
+        // return this.data.shift();
+
+        if (this.data.length < 1) return;
+        let min = this.data[0];
+        let minIndex = 0;
+
+        for (let i = 0; i < this.data.length; i++) {
+          if (this.compare(this.data[i], min) < 0) {
+            min = this.data[i];
+            minIndex = i;
+          }
+        }
+        [this.data[0], this.data[minIndex]] = [this.data[minIndex], this.data[0]];
+
+        this.data.shift()
+        return min
+      }
+      save(pos) {
+
+        this.data.push(pos)
+        // this.data.sort(this.compare)
+        // console.log(this.data)
+        return this.data.length
+      }
+      get length() {
+        return this.data.length
+      }
+    }
+
+    let map = localStorage.getItem('map')
+    if (!map) {
+      map = Array(10000).fill(0)
+    } else {
+      map = JSON.parse(map)
+    }
+    console.log(map.filter(v => v !== 0))
+    let mousedown = false;
+    const container = document.createElement('div')
+    initMap(map)
+
+    function initMap(map) {
+      container.setAttribute('class', 'container')
+      for (let i = 0; i < 100; i++) {
+        for (let j = 0; j < 100; j++) {
+          const cell = document.createElement('div')
+          cell.setAttribute('class', 'cell')
+          cell.setAttribute('id', 'cell-' + i + '-' + j)
+          if (map[i * 100 + j] === 1) {
+            cell.style.backgroundColor = '#000'
+          }
+          // if(map[i*100 + j] === 2) {
+          //   map[i*100 + j] = 0
+          //   cell.style.backgroundColor = 'red'
+          // }
+          cell.addEventListener('mousemove', function (e) {
+            if (!mousedown) {
+              return
+            }
+            console.log(i, j)
+            e.target.style.backgroundColor = '#000'
+            map[i * 100 + j] = 1
+            localStorage.setItem('map', JSON.stringify(map))
+          })
+          container.appendChild(cell)
+        }
+        // container.appendChild(document.createElement('br'))
+      }
+      document.querySelector('#app').appendChild(container)
+    }
+
+    document.addEventListener('mousedown', function (e) {
+      mousedown = true
+      if (e.which == 3) {
+        mousedown = false
+      }
+    })
+    document.addEventListener('contextmenu', function (e) {
+      e.preventDefault()
+    })
+    document.addEventListener('mouseup', function () {
+      mousedown = false
+    })
+
+    const sleep = num =>
+      new Promise((res, rej) => {
+        setTimeout(() => {
+          res()
+        }, num)
+      });
+
+    let count = 0
+    async function findPath(map, start, end, way = 'BFS') {
+      document.querySelector(`#cell-${start[0]-1}-${start[1]-1}`).style.backgroundColor = '#e43'
+      document.querySelector(`#cell-${end[0]+1}-${end[1]+1}`).style.backgroundColor = '#e43'
+
+      function compare(pos) {
+        return (pos[0] - end[0]) ** 2 + (pos[1] - end[1]) ** 2;
+      }
+
+      let sortQue = new BinaryHeap([start], (a, b) => compare(a) - compare(b));
+
+      const table = Object.create(map);
+
+      window.path = []
+
+      while (sortQue.length) {
+        let [x, y] = sortQue.take();
+        console.log(x, y)
+
+        if (x === end[0] && y === end[1]) {
+          while (x !== start[0] || y !== start[1]) {
+            console.log(table[x * 100 + y]);
+            path.push(map[x * 100 + y]);
+            [x, y] = table[x * 100 + y];
+
+            await sleep(1)
+            container.children[x * 100 + y].style.backgroundColor = '#fff'
+          }
+          return path
+        }
+        // 上下左右
+        await insert(x, y - 1, [x, y])
+        await insert(x, y + 1, [x, y])
+        await insert(x - 1, y, [x, y])
+        await insert(x + 1, y, [x, y])
+
+        // 斜向
+        await insert(x - 1, y - 1, [x, y])
+        await insert(x + 1, y - 1, [x, y])
+        await insert(x - 1, y + 1, [x, y])
+        await insert(x + 1, y + 1, [x, y])
+      }
+
+      async function insert(x, y, pre) {
+        if (x < 0 || x > 99 || y < 0 || y > 99) {
+          return;
+        }
+
+        if (table[x * 100 + y]) {
+          // console.log(table[x*100 + y], pre)
+          return;
+        }
+
+        if (table[x * 100 + y] === 0 && (compare([x, y]) - compare(pre) > 0)) return
+
+        // await sleep(1)
+        container.children[x * 100 + y].style.backgroundColor = 'red'
+
+        table[x * 100 + y] = pre;
+
+        sortQue.save([x, y]);
+      }
+
+      return path;
+    }
+
+    console.log(findPath(map, [10, 10], [50, 50], "BFS"))
+  </script>
+</body>
+
+</html>
